@@ -110,7 +110,7 @@ class DepthGen(torch.nn.Module):
 
         # Rasterize
         _, zbuf, _, _ = rasterize_meshes(meshes.cuda(),
-                                         image_size=224,
+                                         image_size=120,
                                          cull_backfaces=True)
 
         # Crop
