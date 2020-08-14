@@ -110,7 +110,7 @@ class LHSynthIterableDataset(torch.utils.data.IterableDataset):
         kps3d = torch.tensor(kps3d, dtype=torch.float32)
 
         bbox = self.get_bbox(kps2d[1:])
-        norm_size = torch.norm(kps3d[6] - kps3d[1])
+        norm_size = torch.norm(kps3d[23] - kps3d[22])
         center = kps3d[1:].mean(0)
 
         sample, padding = self.crop_depth(sample, bbox)
