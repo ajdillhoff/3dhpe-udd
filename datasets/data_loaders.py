@@ -14,7 +14,7 @@ class LHSynthGenDataLoader(torch.utils.data.DataLoader):
     """LibHand dynamic synthetic generator data loader."""
     def __init__(self, scene_path, pose_config_path, shape_config_path,
                  batch_per_epoch, batch_size, num_workers, num_points,
-                 noise_coeff=0.0, training=True, image_size=224):
+                 noise_coeff=0.0, training=True, image_size=120):
         sample_tsfms = transforms.Compose([
             transforms.ToPILImage(),
             transforms.Resize(image_size, Image.NEAREST),
@@ -42,7 +42,7 @@ class LHSynthGenDataLoader(torch.utils.data.DataLoader):
 class LHSynthDataLoader(torch.utils.data.DataLoader):
     """LibHand static synthetic data loader."""
     def __init__(self, data_path, batch_size, shuffle, validation_split,
-            num_workers, num_points, noise_coeff=0.0, image_size=224):
+            num_workers, num_points, noise_coeff=0.0, image_size=120):
         sample_tsfms = transforms.Compose([
             transforms.ToPILImage(),
             transforms.Resize(image_size, Image.NEAREST),
@@ -71,13 +71,13 @@ class NYUDataLoader(torch.utils.data.DataLoader):
             num_workers, num_points, training=True):
         sample_tsfms = transforms.Compose([
             transforms.ToPILImage(),
-            transforms.Resize(224, Image.NEAREST),
+            transforms.Resize(120, Image.NEAREST),
             transforms.ToTensor(),
         ])
 
         target_tsfms = transforms.Compose([
             transforms.ToPILImage(),
-            transforms.Resize(224, Image.NEAREST),
+            transforms.Resize(120, Image.NEAREST),
             transforms.ToTensor()
         ])
 
@@ -96,13 +96,13 @@ class NYUMultiDataLoader(torch.utils.data.DataLoader):
             num_workers, num_points, synth=False, training=True):
         sample_tsfms = transforms.Compose([
             transforms.ToPILImage(),
-            transforms.Resize(224, Image.NEAREST),
+            transforms.Resize(120, Image.NEAREST),
             transforms.ToTensor(),
         ])
 
         target_tsfms = transforms.Compose([
             transforms.ToPILImage(),
-            transforms.Resize(224, Image.NEAREST),
+            transforms.Resize(120, Image.NEAREST),
             transforms.ToTensor()
         ])
 
@@ -120,7 +120,7 @@ class ITSEDataLoader(torch.utils.data.DataLoader):
                  idx_range, num_points):
         sample_tsfms = transforms.Compose([
             transforms.ToPILImage(),
-            transforms.Resize(224, Image.NEAREST),
+            transforms.Resize(120, Image.NEAREST),
             transforms.ToTensor(),
         ])
         self.data_path = data_path
@@ -137,7 +137,7 @@ class ITSEFDataLoader(torch.utils.data.DataLoader):
                  num_points):
         sample_tsfms = transforms.Compose([
             transforms.ToPILImage(),
-            transforms.Resize(224, Image.NEAREST),
+            transforms.Resize(120, Image.NEAREST),
             transforms.ToTensor(),
         ])
         self.data_path = data_path

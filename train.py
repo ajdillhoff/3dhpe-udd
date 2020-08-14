@@ -22,8 +22,8 @@ def main(args):
                                           monitor='val_loss', mode='min',
                                           period=0)
     early_stop_callback = EarlyStopping('val_loss', patience=hparams.patience)
-    trainer = Trainer(#val_check_interval=hparams.val_check_interval,
-                      check_val_every_n_epoch=hparams.val_check_interval,
+    trainer = Trainer(val_check_interval=hparams.val_check_interval,
+                      #check_val_every_n_epoch=hparams.val_check_interval,
                       gpus=hparams.gpus,
                       checkpoint_callback=checkpoint_callback,
                       early_stop_callback=None,

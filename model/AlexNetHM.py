@@ -33,7 +33,7 @@ class AlexNetHM(nn.Module):
         final_out = nn.Linear(4096, num_joints * joint_features)
 
         self.estimator = nn.Sequential(
-            nn.Linear(256 * 6 * 6, 4096),
+            nn.Linear(256 * 2 * 2, 4096),
             nn.ReLU(inplace=True),
             nn.Dropout(0.25),
             final_out
@@ -52,6 +52,6 @@ class AlexNetHM(nn.Module):
 
     def forward(self, x):
         x = self.features(x)
-        x = x.view(x.size(0), 256 * 6 * 6)
+        x = x.view(x.size(0), 256 * 2 * 2)
         x = self.estimator(x)
         return x
