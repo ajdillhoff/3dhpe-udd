@@ -98,11 +98,11 @@ class DepthGen(torch.nn.Module):
         diff, _ = (max_vals - min_vals).max(1)
 
         mesh -= center.unsqueeze(1)
-        mesh *= ((2 / diff.unsqueeze(1).unsqueeze(1).repeat(1, mesh.shape[1], 3)) * 0.6)
+        mesh *= ((2 / diff.unsqueeze(1).unsqueeze(1).repeat(1, mesh.shape[1], 3)) * 0.65)
         mesh[:, :, 2] += 1
 
         coord_affine -= center.unsqueeze(1).repeat(1, coord_affine.shape[1], 1)
-        coord_affine *= ((2 / diff.unsqueeze(1).unsqueeze(1).repeat(1, coord_affine.shape[1], 3)) * 0.6)
+        coord_affine *= ((2 / diff.unsqueeze(1).unsqueeze(1).repeat(1, coord_affine.shape[1], 3)) * 0.65)
 
         # Initialize Meshes
         meshes = Meshes(mesh,
