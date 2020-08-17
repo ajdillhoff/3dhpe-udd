@@ -20,8 +20,9 @@ def main(args):
 
     checkpoint_callback = ModelCheckpoint(filepath=hparams.save_path,
                                           monitor='val_loss', mode='min',
-                                          period=0)
-    early_stop_callback = EarlyStopping('val_loss', patience=hparams.patience)
+                                          period=0, verbose=1)
+    early_stop_callback = EarlyStopping('val_loss', patience=hparams.patience,
+                                        verbose=1)
     trainer = Trainer(val_check_interval=hparams.val_check_interval,
                       #check_val_every_n_epoch=hparams.val_check_interval,
                       gpus=hparams.gpus,
