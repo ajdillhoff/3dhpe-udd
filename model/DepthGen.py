@@ -91,8 +91,8 @@ class DepthGen(torch.nn.Module):
         coord_affine = coord_affine[:, :, :3] / coord_affine[:, :, 3, None]
 
         # Normalize output
-        min_vals, _ = coord_affine[:, joint_idxs].min(1)
-        max_vals, _ = coord_affine[:, joint_idxs].max(1)
+        min_vals, _ = coord_affine.min(1)
+        max_vals, _ = coord_affine.max(1)
         center = (max_vals + min_vals) / 2  # center of mass
         diff, _ = (max_vals - min_vals).max(1)
 
