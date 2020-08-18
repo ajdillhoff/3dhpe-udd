@@ -64,7 +64,7 @@ class DepthGenLM(pl.LightningModule):
 
     def forward(self, x):
         pose_params = self.estimator(x)
-        preds = self.depth_gen(pose_params)
+        preds = self.depth_gen(pose_params, self.hparams.use_ss_loss)
 
         return preds
 

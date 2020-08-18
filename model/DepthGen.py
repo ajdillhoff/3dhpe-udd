@@ -67,17 +67,16 @@ class DepthGen(torch.nn.Module):
             bone_weights,
             self.clip_space_matrix)
 
-    def generate_depth(self, x):
+    def generate_depth(self, local_transforms, coord_pred):
         """Generates a depth image given the current model parameters.
 
         Args:
-            x - Tensor (B x (3 + num_joint) - Model parameters.
+            local_transforms - Tensor (B x 4 x 4) - Local joint transforms.
+            coord_pred - Tensor (B x J x 3) - Predicted hand keypoints.
 
         Returns:
             z_buffer - Tensor (B x H x W) - Depth buffers.
         """
-        joint_idxs = [1, 2, 3, 4, 5, 7, 8, 9, 10, 12, 13, 14, 15, 17, 18, 19, 20, 22, 23, 24, 25, 6]
-        local_transforms, coord_pred, rot_offset = self.hand_model(x)
         mesh, _ = self.mesh_transform(local_transforms)
 
         coord_affine = torch.cat((coord_pred,
@@ -101,9 +100,6 @@ class DepthGen(torch.nn.Module):
         mesh *= ((2 / diff.unsqueeze(1).unsqueeze(1).repeat(1, mesh.shape[1], 3)) * 0.8)
         mesh[:, :, 2] += 1
 
-        coord_affine -= center.unsqueeze(1).repeat(1, coord_affine.shape[1], 1)
-        coord_affine *= ((2 / diff.unsqueeze(1).unsqueeze(1).repeat(1, coord_affine.shape[1], 3)) * 0.8)
-
         # Initialize Meshes
         meshes = Meshes(mesh,
                         self.faces.unsqueeze(0).repeat(mesh.shape[0], 1, 1))
@@ -114,15 +110,31 @@ class DepthGen(torch.nn.Module):
                                          cull_backfaces=True)
 
         # Crop
-        out_img = zbuf[:, :, :, 0].unsqueeze(1)
+        z_buffer = zbuf[:, :, :, 0].unsqueeze(1)
 
-        return out_img, coord_pred, rot_offset, local_transforms
+        return z_buffer
 
-    def forward(self, x):
-        pose_params = x
-        img, coords, rot_offset, local_transforms = self.generate_depth(pose_params)
-
+    def forward(self, x, gen_depth=True):
         joint_idxs = [1, 2, 3, 4, 5, 7, 8, 9, 10, 12, 13, 14, 15, 17, 18, 19, 20, 22, 23, 24, 25, 6]
+        pose_params = x
+        local_transforms, coords, rot_offset = self.hand_model(x)
+
+        if gen_depth:
+            img = self.generate_depth(local_transforms, coords[:, joint_idxs])
+
+            # Normalize depth images
+            for i in range(x.shape[0]):
+                bg_mask = (img[i] == -1)
+                fg_mask = (img[i] > -1)
+                min_val = img[i, fg_mask].min()
+                max_val = img[i, fg_mask].max()
+                img[i, fg_mask] -= min_val
+                img[i, fg_mask] /= (max_val - min_val)
+                img[i, fg_mask] *= 2.0
+                img[i, fg_mask] -= 1.0
+                img[i, bg_mask] = 1.0
+        else:
+            img = None
 
         # Normalization of output using first bone in index finger
         mean = coords[:, joint_idxs].mean(1).unsqueeze(1).clone()  # Don't include carpals
@@ -131,20 +143,6 @@ class DepthGen(torch.nn.Module):
 
         coords -= mean.repeat(1, self.output_joints, 1)
         coords /= norm_size.repeat(1, self.output_joints, 1)
-        # points -= mean.repeat(1, self.sample_size, 1)
-        # points /= norm_size.repeat(1, self.sample_size, 3)
-
-        # Normalize depth images
-        for i in range(x.shape[0]):
-            bg_mask = (img[i] == -1)
-            fg_mask = (img[i] > -1)
-            min_val = img[i, fg_mask].min()
-            max_val = img[i, fg_mask].max()
-            img[i, fg_mask] -= min_val
-            img[i, fg_mask] /= (max_val - min_val)
-            img[i, fg_mask] *= 2.0
-            img[i, fg_mask] -= 1.0
-            img[i, bg_mask] = 1.0
 
         return [img, coords, norm_size, mean, rot_offset, local_transforms,
                 self.mesh_transform.transforms_inv[:, 0],
