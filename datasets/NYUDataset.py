@@ -17,7 +17,7 @@ class NYUDataset(torch.utils.data.Dataset):
     """NYU Dataset."""
 
     def __init__(self, root_dir, sample_transform, target_transform,
-                 idxs=[], num_points=1024, train=False, synth=False):
+                 idxs=[], num_points=8192, train=False, synth=False):
         """
         Args:
             root_dir (string): Path to the data.
@@ -91,10 +91,9 @@ class NYUDataset(torch.utils.data.Dataset):
 
         # kps2d = self.annotations2d[idx-1, self.eval_joints]
         sample, padding = self.crop_depth(sample, bbox)
-        target = self.depth_to_pc(sample, bbox, padding)
+        target = self.depth_to_pc(sample)
 
         target = torch.tensor(target, dtype=torch.float32)
-        target = self.normalize(target, center, norm_size)
         kps3d = self.normalize(kps3d, center, norm_size)
 
         # NYU 14 joint eval
@@ -108,7 +107,7 @@ class NYUDataset(torch.utils.data.Dataset):
 
         sample = self.normalize_depth(sample)
 
-        target[:, 2] *= -1.0
+        target[:, 2] *= 1.0
         kps3d[:, 2] *= -1.0
 
         if idx >= 72757:
@@ -180,7 +179,7 @@ class NYUDataset(torch.utils.data.Dataset):
 
         return np.pad(cropped, (row_pad, col_pad), mode='constant', constant_values=0), (row_pad, col_pad)
 
-    def get_bbox(self, keypoints, pad=25):
+    def get_bbox(self, keypoints, pad=20):
         """Calculates a 3d bounding box.
 
         Args:
@@ -209,9 +208,9 @@ class NYUDataset(torch.utils.data.Dataset):
         max_val = norm_img[fg_mask].max()
         norm_img[fg_mask] -= min_val
         norm_img[fg_mask] /= (max_val - min_val)
-        norm_img[fg_mask] *= 2.0
-        norm_img[fg_mask] -= 1.0
-        norm_img[bg_mask] = 1.0
+        # norm_img[fg_mask] *= 2.0
+        # norm_img[fg_mask] -= 1.0
+        # norm_img[bg_mask] = 1.0
 
         return norm_img
 
@@ -233,27 +232,28 @@ class NYUDataset(torch.utils.data.Dataset):
 
         return norm_points
 
-    def depth_to_pc(self, depth_img, bbox, padding):
+    def depth_to_pc(self, depth_img, pad=0.05):
         """Transforms the depth image into a point cloud representation.
 
         Args:
             depth_img (array): depth image.
-            bbox (float, array): bounding box of the hand in (u, v, d).
-            padding (int, array): row and column padding added to the cropped
-              image from earlier pre-processing.
         Returns:
             Point cloud representation of hand.
         """
 
-        xstart = bbox[0] - padding[1][0]
-        ystart = bbox[2] - padding[0][0]
-
         # Convert to point cloud
         depth_img = torch.from_numpy(depth_img).unsqueeze(0)
-        p_ndc = get_point_cloud(depth_img, self.num_points, 0)
-        p_ndc = p_ndc.squeeze(0).numpy()
-        p_ndc[:, 0] += xstart
-        p_ndc[:, 1] += ystart
-        pc = self.convert_uvd_to_xyz(p_ndc)
+        p_pixel = get_point_cloud(depth_img, self.num_points, 0)
+        p_pixel = p_pixel.squeeze(0).numpy()
 
-        return pc
+        # Convert to [-1, 1] cube
+        min_vals = p_pixel.min(0)
+        max_vals = p_pixel.max(0)
+        diff = np.abs(max_vals - min_vals)
+        center = (max_vals + min_vals) / 2
+        scale = diff[:2].max() * (0.5 + pad)
+        p_norm = p_pixel - center
+        p_norm /= scale
+        p_norm[:, 2] += 0.5
+
+        return p_norm

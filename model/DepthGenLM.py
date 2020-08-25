@@ -26,7 +26,7 @@ from model.loss import physical_loss
 from model import AlexNetHM, PartCapsuleNet
 from model.ResNet import resnet18
 from model.VGG import vgg16_bn, vgg16_gn
-from utils.util import batched_index_select
+from utils.util import batched_index_select, normalize_batch
 from utils.visualization import plot_hands2d
 
 
@@ -278,7 +278,16 @@ class DepthGenLM(pl.LightningModule):
         return loss_dict
 
     def nyu_step(self, batch):
-        x, y, kps_gt, kps14_gt, _, norm_size, _, _, has_anno = batch
+        _, y, kps_gt, kps14_gt, _, norm_size, _, _, has_anno = batch
+
+        # Render points
+        y[:, :, 0] = (y[:, :, 0] + 1.0) * 0.5 * (self.depth_gen.image_width - 1)
+        y[:, :, 1] = (y[:, :, 1] + 1.0) * 0.5 * (self.depth_gen.image_height - 1)
+
+        with torch.no_grad():
+            x = self.depth_gen.renderer(y)
+            x = normalize_batch(x).unsqueeze(1)
+
         preds = self.forward(x)
         imgs = preds[0]
         coords_pred = preds[1]
