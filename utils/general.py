@@ -48,42 +48,6 @@ def chamfer_dist_mask(pc1, pc2, mask, val=10.0):
     return dist1, idx1, dist2, idx2, pc_diff
 
 
-def walk_bones(skeleton, parent_indices, bone_id=0, joint_positions=None):
-    """Walk the joints of the skeleton to produce a joint map.
-
-    Modified to PyTorch Tensors.
-
-    TODO: This function makes an assumption about the finger tip positions. I
-          need to get the actual tip positions from the vertex data.
-          Additionally, I am not sure if this file is the most appropriate
-          place to put this function. ** CLEANUP **
-    """
-
-    # get number of children
-    children = [i for i, x in enumerate(parent_indices) if x == bone_id]
-
-    # get world position of current bone
-    pos_world = quat.get_derived_position(skeleton, parent_indices, bone_id)
-    d_orientation = quat.get_derived_orientation(skeleton, parent_indices, bone_id) # debug
-
-    if type(joint_positions) != torch.Tensor:
-        joint_positions = torch.zeros(1, 3, device=skeleton.device)
-        joint_positions[0] = pos_world
-    else:
-        joint_positions = torch.cat((joint_positions, pos_world.unsqueeze(0)), dim=0)
-
-    # finger tips
-    if len(children) == 0:
-        tip_pos = torch.tensor([0., 1., 0.], device=skeleton.device)
-        tip_pos = quat.qv_mult(d_orientation, tip_pos)[1:]
-        pos_world += 0.1 * tip_pos
-        joint_positions = torch.cat((joint_positions, pos_world.unsqueeze(0)), dim=0)
-
-    for i in range(len(children)):
-        joint_positions = walk_bones(skeleton, parent_indices, children[i], joint_positions)
-
-    return joint_positions
-
 def create_barycentric_transform(A):
     """Creates a transformation matrix used to calculate the barycentric
     coordinates of a point."""

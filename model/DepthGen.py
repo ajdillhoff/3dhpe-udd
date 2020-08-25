@@ -1,14 +1,14 @@
 import numpy as np
 import torch
-from pytorch3d.renderer import rasterize_meshes
-from pytorch3d.structures import Meshes
 
 from . import MeshTransform as mt
 from . import HandModel as hm
 from . import MeshMask as mm
 from . import Skeleton
+from .Renderer import Renderer
 from utils.general import *
 from utils.transforms import *
+from utils.util import normalize_batch
 
 
 class DepthGen(torch.nn.Module):
@@ -34,7 +34,7 @@ class DepthGen(torch.nn.Module):
         skeleton = Skeleton.Skeleton(hand_parent_idxs)
 
         # Camera and project matrices
-        self.proj_matrix = torch.Tensor([[-1.732051, 0.0, 0.0, 0.0],
+        self.proj_matrix = torch.Tensor([[1.732051, 0.0, 0.0, 0.0],
                                          [0.0, 1.732051, 0.0, 0.0],
                                          [0.0, 0.0, -1.025316, -0.202532],
                                          [0.0, 0.0, 0.0, 1.0]])
@@ -67,6 +67,14 @@ class DepthGen(torch.nn.Module):
             bone_weights,
             self.clip_space_matrix)
 
+        self.renderer = Renderer(image_height, image_width, 2.0)
+
+    @staticmethod
+    def normalize_points(points, center, scale):
+        points -= center.unsqueeze(1)
+        points /= scale.unsqueeze(1).unsqueeze(1).repeat(1, points.shape[1], 3)
+        return points
+
     def generate_depth(self, local_transforms, coord_pred):
         """Generates a depth image given the current model parameters.
 
@@ -93,26 +101,20 @@ class DepthGen(torch.nn.Module):
         # Normalize output
         min_vals, _ = coord_affine.min(1)
         max_vals, _ = coord_affine.max(1)
-        center = (max_vals + min_vals) / 2  # center of mass
-        diff, _ = (max_vals[:, :2] - min_vals[:, :2]).abs().max(1)
+        center = (max_vals + min_vals) / 2  # center of bounding box
+        diff, _ = (max_vals[:, :2] - min_vals[:, :2]).max(1)
+        scale = diff * (0.5 + 0.1)  # 0.1 is the padding
 
-        mesh -= center.unsqueeze(1)
-        mesh *= ((2 / diff.unsqueeze(1).unsqueeze(1).repeat(1, mesh.shape[1], 3)) * 0.75)
-        mesh[:, :, 2] += 1
+        mesh = self.normalize_points(mesh, center, scale)
+        mesh[:, :, 2] += 0.5  # Centered between 0 and 1
 
-        # Initialize Meshes
-        meshes = Meshes(mesh,
-                        self.faces.unsqueeze(0).repeat(mesh.shape[0], 1, 1))
+        # Viewport Transform
+        mesh[:, :, 0] = (mesh[:, :, 0] + 1.0) * 0.5 * (self.image_width - 1)
+        mesh[:, :, 1] = (1 - (mesh[:, :, 1] + 1.0) * 0.5) * (self.image_height - 1)
 
-        # Rasterize
-        _, zbuf, _, _ = rasterize_meshes(meshes.cuda(),
-                                         image_size=120,
-                                         cull_backfaces=True)
+        out_img = self.renderer(mesh)
 
-        # Crop
-        z_buffer = zbuf[:, :, :, 0].unsqueeze(1)
-
-        return z_buffer
+        return out_img
 
     def forward(self, x, gen_depth=True):
         joint_idxs = [1, 2, 3, 4, 5, 7, 8, 9, 10, 12, 13, 14, 15, 17, 18, 19, 20, 22, 23, 24, 25, 6]
@@ -123,16 +125,7 @@ class DepthGen(torch.nn.Module):
             img = self.generate_depth(local_transforms, coords[:, joint_idxs])
 
             # Normalize depth images
-            for i in range(x.shape[0]):
-                bg_mask = (img[i] == -1)
-                fg_mask = (img[i] > -1)
-                min_val = img[i, fg_mask].min()
-                max_val = img[i, fg_mask].max()
-                img[i, fg_mask] -= min_val
-                img[i, fg_mask] /= (max_val - min_val)
-                img[i, fg_mask] *= 2.0
-                img[i, fg_mask] -= 1.0
-                img[i, bg_mask] = 1.0
+            img = normalize_batch(img)
         else:
             img = None
 

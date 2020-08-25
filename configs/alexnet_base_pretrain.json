@@ -20,13 +20,13 @@
 	"pretrain_path": "",
 	"save_path": "./checkpoints/",
     "patience": 3,
-	"batch_size": 128,
+	"batch_size": 64,
 	"num_workers": 8,
-	"num_points": 1024,
+	"num_points": 8192,
 	"learning_rate": 1e-3,
 	"use_coord_loss": true,
 	"use_physical_loss": true,
 	"physical_lambda": 0.1,
 	"use_ss_loss": false,
-	"val_check_interval": 1000 
+	"val_check_interval": 1000
 }
