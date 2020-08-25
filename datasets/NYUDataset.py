@@ -54,7 +54,10 @@ class NYUDataset(torch.utils.data.Dataset):
         return len(self.idxs)
 
     def __getitem__(self, idx):
-        idx = self.idxs[idx] + 1
+        if self.train is True:
+            idx = 1
+        else:
+            idx = self.idxs[idx] + 1
         if self.synth:
             depth_name = os.path.join(self.root_dir,
                                       'synthdepth_1_{0:07d}.png'.format(idx))
