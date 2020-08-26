@@ -234,7 +234,7 @@ class LHSynthIterableDataset(torch.utils.data.IterableDataset):
         return points_xyz
 
     def normalize_depth(self, depth_img):
-        """Normalize depth image to be in range [-1, 1].
+        """Normalize depth image to be in range [0, 1].
         Returns a clone of the original image.
         """
         norm_img = depth_img.clone()
@@ -244,9 +244,10 @@ class LHSynthIterableDataset(torch.utils.data.IterableDataset):
         max_val = norm_img[fg_mask].max()
         norm_img[fg_mask] -= min_val
         norm_img[fg_mask] /= (max_val - min_val)
-        norm_img[fg_mask] *= 2.0
-        norm_img[fg_mask] -= 1.0
-        norm_img[bg_mask] = 1.0
+        norm_img[fg_mask] = 1 - norm_img[fg_mask]
+        # norm_img[fg_mask] *= 2.0
+        # norm_img[fg_mask] -= 1.0
+        norm_img[bg_mask] = 0
 
         return norm_img
 
