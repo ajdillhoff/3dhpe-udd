@@ -20,7 +20,7 @@
 	"pretrain_path": "",
 	"save_path": "./checkpoints/",
     "patience": 3,
-	"batch_size": 64,
+	"batch_size": 128,
 	"num_workers": 8,
 	"num_points": 8192,
 	"learning_rate": 1e-3,

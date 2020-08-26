@@ -147,7 +147,8 @@ def normalize_batch(imgs):
     max_vals, _ = imgs.view(orig_shape[0], -1).max(-1)
     min_vals = min_vals.unsqueeze(1).repeat(1, orig_shape[1] * orig_shape[2]).view(orig_shape)
     max_vals = max_vals.unsqueeze(1).repeat(1, orig_shape[1] * orig_shape[2]).view(orig_shape)
-    imgs -= min_vals
-    imgs /= (max_vals - min_vals)
-    imgs *= fg_mask.view(orig_shape)
-    return imgs
+    out_imgs = (imgs - min_vals) / (max_vals - min_vals) * fg_mask.view(orig_shape)
+    # imgs -= min_vals
+    # imgs /= (max_vals - min_vals)
+    # imgs *= fg_mask.view(orig_shape)
+    return out_imgs
